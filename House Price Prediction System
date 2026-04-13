@@ -2,6 +2,9 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import warnings
+warnings.filterwarnings('ignore')
+
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
@@ -13,12 +16,14 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.svm import SVR
 from sklearn.metrics import mean_absolute_percentage_error
 
-# ---------------------------
+
 # Step 1: Load Dataset
-# Replace this with your dataset path or loading method
-# For demonstration, we create a small synthetic dataset
 data = {
     'size': [1500, 1800, 2400, 3000, 3500, 2000, 2300, 2700, 3200, 3600],
+    'price' : [300000, 435000, 520000, 560000, 700000, 300000, 390000, 380000, 555000, 525000],
+    'description': ['Spacious 3-4 bedroom house with modern amenities,'
+    'a large backyard with affordable price and great location, '
+    'nearby best schools and shopping centers']*10,
     'bedrooms': [3, 4, 3, 5, 4, 3, 4, 4, 5, 4],
     'bathrooms': [2, 3, 2, 4, 3, 2, 3, 3, 4, 3],
     'age': [10, 15, 20, 5, 8, 12, 18, 7, 6, 9],
@@ -28,18 +33,16 @@ data = {
 }
 dataset = pd.DataFrame(data)
 
-# ---------------------------
-# Step 2: Separate features and target
+#Separate features and target
 X = dataset.drop('SalePrice', axis=1)
 y = dataset['SalePrice']
 
-# ---------------------------
-# Step 3: Identify categorical and numerical columns
+
+#Identify categorical and numerical columns
 categorical_cols = X.select_dtypes(include=['object']).columns.tolist()
 numerical_cols = X.select_dtypes(include=['int64', 'float64']).columns.tolist()
 
-# ---------------------------
-# Step 4: Preprocessing pipelines for numerical and categorical data
+#Preprocessing pipelines for numerical and categorical data
 numerical_transformer = SimpleImputer(strategy='mean')
 
 categorical_transformer = Pipeline(steps=[
@@ -53,24 +56,21 @@ preprocessor = ColumnTransformer(
         ('cat', categorical_transformer, categorical_cols)
     ])
 
-# ---------------------------
-# Step 5: Split data into training and test sets
+#Split data into training and test sets
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42)
+    X, y, test_size=0.2, random_state=43)
 
-# ---------------------------
-# Step 6: Define models
+#Define models
 models = {
     'Linear Regression': LinearRegression(),
     'Random Forest': RandomForestRegressor(n_estimators=100, random_state=42),
-    'Support Vector Regression': SVR()
+    'Support Vector Regression': SVR(kernel='rbf', C=100, gamma=0.1, epsilon=0.1)
 }
 
 # Store predictions for visualization
 predictions = {}
 
-# ---------------------------
-# Step 7: Train, predict and evaluate each model
+#Train, predict and evaluate each model
 for name, model in models.items():
     # Create pipeline with preprocessing and model
     clf = Pipeline(steps=[('preprocessor', preprocessor),
@@ -81,13 +81,12 @@ for name, model in models.items():
     mape = mean_absolute_percentage_error(y_test, preds)
     print(f"{name} Mean Absolute Percentage Error: {mape:.4f}")
 
-# ---------------------------
-# Step 8: Visualization of Actual vs Predicted Prices
+#Visualization of Actual vs Predicted Prices
 
 # Convert y_test to numpy array for plotting
 y_test_array = y_test.to_numpy()
 
-plt.figure(figsize=(18, 5))
+plt.figure(figsize=(12, 5))
 
 for i, (name, preds) in enumerate(predictions.items(), 1):
     # Line plot
@@ -107,15 +106,14 @@ for i, (name, preds) in enumerate(predictions.items(), 1):
              [min(y_test_array), max(y_test_array)],
              color='red', linestyle='--')  # Diagonal line y=x
     plt.title(f'{name} - Scatter Plot')
-    plt.xlabel('Actual Prices ($)')
-    plt.ylabel('Predicted Prices ($)')
+    plt.xlabel('Actual Prices (₹)')
+    plt.ylabel('Predicted Prices (₹)')
     plt.grid(True)
 
 plt.tight_layout()
 plt.show()
 
-# ---------------------------
-# Step 9: Feature Importance from Random Forest
+#Feature Importance from Random Forest
 
 # Fit Random Forest pipeline again to extract feature importances
 rf_pipeline = Pipeline(steps=[('preprocessor', preprocessor),
@@ -129,7 +127,8 @@ onehot_features = list(rf_pipeline.named_steps['preprocessor']
                        .get_feature_names_out(categorical_cols))
 all_features = numerical_cols + onehot_features
 
-importances = rf_pipeline.named_steps['regressor'].feature_importances_
+importances = rf_pipeline.named_steps['regressor'].feature_importances_,
+np.zeros(len(all_features)) # If model does not support feature importances, return zeros
 
 # Plot feature importances
 plt.figure(figsize=(10, 6))
