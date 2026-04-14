@@ -1,13 +1,11 @@
 <h1 align="center">Hi 👋, I'm Dev Sinha</h1>
 <h3 align="center">Python & C++ Developer | Aspiring Machine Learning Engineer</h3>
 
-- 🔭 I’m currently working on [House Price Prediction System](https://github.com/devsinha846/python-project/blob/main/ActiveTrack%20Pro)
+- 🔭 I’m currently working on [SMART FINANCE AI](https://github.com/devsinha846/python-project/blob/main/ActiveTrack%20Pro)
 
 - 🌱 I’m currently learning **Machine Learning , Frameworks**
-
-- 🔭 I’m currently working on [House Price Prediction System](https://github.com/devsinha846/python-project/blob/main/VisionAI%3A%20Real-Time%20Image%20Classifier)
-
-- 💬 Ask me about **Python , AI , C++**
+  
+- 💬 Ask me about **Python , AI , C++** , ML
 
 - 📫 How to reach me **sinhadev.1704@gmail.com**
 
