@@ -1,0 +1,250 @@
+import sqlite3
+import tkinter as tk
+from tkinter import ttk, messagebox
+from datetime import datetime
+import pandas as pd
+from PIL import Image, ImageTk, ImageFilter
+
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.ensemble import RandomForestRegressor
+
+DB = "expenses.db"
+
+class ExpenseTracker:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("SMART FINANCE AI")
+        self.root.state("zoomed")
+
+        self.model = None
+
+        # THEMES
+        self.themes = {
+            "Royal Dark": "#1A1953",
+            "Peach Cream": "#FFB399",
+            "Forest Brew": "#5F6F65",
+            "Midnight": "#0F172A",
+            "Ocean": "#0EA5E9",
+            "Sunset": "#F472B6"
+        }
+
+        self.current_theme = "Royal Dark"
+
+        self.setup_db()
+        self.build_ui()
+        self.load_expenses()
+
+    # ---------- DATABASE ----------
+    def setup_db(self):
+        with sqlite3.connect(DB) as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS expenses(
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    date TEXT,
+                    category TEXT,
+                    description TEXT,
+                    amount REAL
+                )
+            """)
+
+    # ---------- BACKGROUND ----------
+    def load_bg(self):
+        try:
+            img = Image.open(r"C:\Users\Dev Sinha\Downloads\top-view-desk-concept-with-notepad.jpg")
+
+            img = img.resize((self.root.winfo_screenwidth(), self.root.winfo_screenheight()))
+            img = img.filter(ImageFilter.GaussianBlur(8))
+
+            self.bg_img = ImageTk.PhotoImage(img)
+
+            self.canvas.create_image(0, 0, image=self.bg_img, anchor="nw")
+
+            # Theme overlay
+            color = self.themes[self.current_theme]
+
+            self.canvas.create_rectangle(
+                0, 0,
+                self.root.winfo_screenwidth(),
+                self.root.winfo_screenheight(),
+                fill=color,
+                stipple="gray50"
+            )
+
+        except Exception as e:
+            print("Background error:", e)
+
+    # ---------- THEME ----------
+    def change_theme(self, event):
+        self.current_theme = self.theme_box.get()
+        self.canvas.delete("all")
+        self.load_bg()
+
+    # ---------- UI ----------
+    def build_ui(self):
+        self.canvas = tk.Canvas(self.root, highlightthickness=0)
+        self.canvas.pack(fill="both", expand=True)
+
+        self.load_bg()
+
+        self.main_frame = tk.Frame(self.canvas)
+        self.main_frame.place(relwidth=1, relheight=1)
+
+        # SIDEBAR
+        sidebar = tk.Frame(self.main_frame, bg="#111827", width=220)
+        sidebar.pack(side="left", fill="y")
+
+        tk.Label(sidebar, text="💰 Finance AI",
+                 bg="#111827", fg="#FFB399",
+                 font=("Segoe UI", 18, "bold")).pack(pady=20)
+
+        tk.Label(sidebar, text="Themes", bg="#111827", fg="white").pack()
+
+        self.theme_box = ttk.Combobox(
+            sidebar,
+            values=list(self.themes.keys()),
+            state="readonly"
+        )
+        self.theme_box.set(self.current_theme)
+        self.theme_box.pack(pady=10)
+        self.theme_box.bind("<<ComboboxSelected>>", self.change_theme)
+
+        # CONTENT
+        self.content = tk.Frame(self.main_frame, bg="#ffffff")
+        self.content.pack(side="right", fill="both", expand=True, padx=20, pady=20)
+
+        # TITLE
+        tk.Label(
+            self.content,
+            text="SMART FINANCE AI",
+            font=("Segoe UI", 36, "bold"),
+            fg="#0F172A",
+            bg="#ffffff"
+        ).pack(pady=20)
+
+        # CARD
+        card = tk.Frame(self.content, bg="#ffffff")
+        card.pack(fill="x", pady=20, padx=20)
+
+        card.config(highlightbackground="#cccccc", highlightthickness=1)
+
+        form = tk.Frame(card, bg="#ffffff")
+        form.pack(pady=10)
+
+        self.category = ttk.Combobox(form, values=["Food", "Transport", "Utilities", "Entertainment"])
+        self.category.set("Food")
+        self.category.grid(row=0, column=0, padx=5)
+
+        self.amount = tk.Entry(form)
+        self.amount.grid(row=0, column=1, padx=5)
+
+        self.desc = tk.Entry(form)
+        self.desc.grid(row=0, column=2, padx=5)
+
+        tk.Button(form, text="Add", bg="#FFB399", command=self.add_expense).grid(row=0, column=3, padx=5)
+        tk.Button(form, text="Train AI", bg="#34D399", command=self.train_model).grid(row=0, column=4, padx=5)
+        tk.Button(form, text="Predict", bg="#A78BFA", command=self.predict_spending).grid(row=0, column=5, padx=5)
+
+        # TABLE
+        self.tree = ttk.Treeview(self.content, columns=("Date", "Category", "Amount"), show="headings")
+        self.tree.pack(fill="both", expand=True)
+
+        for col in ("Date", "Category", "Amount"):
+            self.tree.heading(col, text=col)
+
+        # TOTAL
+        self.total_lbl = tk.Label(self.content, text="Total: ₹0", font=("Segoe UI", 12, "bold"), bg="#ffffff")
+        self.total_lbl.pack()
+
+    # ---------- ADD ----------
+    def add_expense(self):
+        try:
+            amt = float(self.amount.get())
+            cat = self.category.get()
+            desc = self.desc.get()
+            date = datetime.now().strftime("%Y-%m-%d")
+
+            with sqlite3.connect(DB) as conn:
+                conn.execute(
+                    "INSERT INTO expenses(date, category, description, amount) VALUES (?, ?, ?, ?)",
+                    (date, cat, desc, amt)
+                )
+
+            self.load_expenses()
+            self.amount.delete(0, tk.END)
+
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+
+    # ---------- LOAD ----------
+    def load_expenses(self):
+        for row in self.tree.get_children():
+            self.tree.delete(row)
+
+        total = 0
+        with sqlite3.connect(DB) as conn:
+            for row in conn.execute("SELECT date, category, amount FROM expenses"):
+                self.tree.insert("", tk.END, values=row)
+                total += row[2]
+
+        self.total_lbl.config(text=f"Total: ₹{total:.2f}")
+
+    # ---------- ML ----------
+    def fetch_ml_data(self):
+        with sqlite3.connect(DB) as conn:
+            df = pd.read_sql("SELECT * FROM expenses", conn)
+
+        if df.empty:
+            return None
+
+        df['date'] = pd.to_datetime(df['date'])
+        df['month'] = df['date'].dt.month
+        df['day'] = df['date'].dt.day
+        return df
+
+    def train_model(self):
+        df = self.fetch_ml_data()
+
+        if df is None or len(df) < 5:
+            messagebox.showwarning("Warning", "Add at least 5 records")
+            return
+
+        X = df[['category', 'month', 'day']]
+        y = df['amount']
+
+        pre = ColumnTransformer([
+            ('cat', OneHotEncoder(handle_unknown='ignore'), ['category']),
+            ('num', 'passthrough', ['month', 'day'])
+        ])
+
+        self.model = Pipeline([
+            ('prep', pre),
+            ('rf', RandomForestRegressor())
+        ])
+
+        self.model.fit(X, y)
+        messagebox.showinfo("Success", "Model trained!")
+
+    def predict_spending(self):
+        if self.model is None:
+            messagebox.showerror("Error", "Train model first")
+            return
+
+        today = datetime.now()
+
+        sample = pd.DataFrame([{
+            'category': self.category.get(),
+            'month': today.month,
+            'day': today.day
+        }])
+
+        pred = self.model.predict(sample)[0]
+        messagebox.showinfo("Prediction", f"Expected Spending: ₹{pred:.2f}")
+
+
+# RUN
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = ExpenseTracker(root)
+    root.mainloop()
