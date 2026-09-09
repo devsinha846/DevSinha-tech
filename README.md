@@ -1,7 +1,7 @@
 <h1 align="center">Hi 👋, I'm Dev Sinha</h1>
 <h3 align="center">Python & C++ Developer | Aspiring Machine Learning Engineer</h3>
 
-- 🔭 I’m currently working on [SMART FINANCE AI](https://github.com/devsinha846/python-project/blob/main/ActiveTrack%20Pro)
+- 🔭 I’m currently working on [PORTFOLIO](https://github.com/devsinha846/python-project/blob/main/ActiveTrack%20Pro)
 
 - 🌱 I’m currently learning **Machine Learning , Frameworks**
   
